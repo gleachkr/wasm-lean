@@ -1,30 +1,17 @@
 {
-  description = "My Lean package";
+  description = "A Simple Lean to WASM/EMScripten project";
 
-  inputs.lean.url = "github:leanprover/lean4";
-  inputs.std4.url = "github:leanprover/std4";
-  inputs.std4.flake = false;
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.lean-wasm.url = "https://github.com/leanprover/lean4-nightly/releases/download/nightly-2023-11-20/lean-4.4.0-nightly-2023-11-20-linux_wasm32.tar.zst";
+  inputs.lean-wasm.url = "https://github.com/leanprover/lean4-nightly/releases/download/nightly-2024-03-30/lean-4.8.0-nightly-2024-03-30-linux_wasm32.tar.zst";
   inputs.lean-wasm.flake = false;
 
-  outputs = { self, nixpkgs, lean, lean-wasm, std4, flake-utils }: flake-utils.lib.eachDefaultSystem (system:
+  outputs = { self, nixpkgs, lean-wasm,  flake-utils }: flake-utils.lib.eachDefaultSystem (system:
   let
       pkgs = nixpkgs.legacyPackages.${system};
-      leanPkgs = lean.packages.${system};
-      std = leanPkgs.buildLeanPackage {
-        name = "Std";
-        src = "${std4}/";
-      };
-      myPkg = leanPkgs.buildLeanPackage {
-        name = "MyPackage";  # must match the name of the top-level .lean file
-        src = ./.;
-        deps = [ std ];
-      };
       js = pkgs.stdenv.mkDerivation {
-        name = "MyPackage-wasm";
+        name = "MyWasmProject";
         buildInputs = [ pkgs.emscripten ];
-        src = myPkg.cTree;
+        src = ./.;
         buildPhase = ''
         mkdir $out mkdir .emscriptencache
         export EM_CACHE=.emscriptencache
@@ -38,18 +25,6 @@
         '';
       };
     in {
-      packages = myPkg // {
-        inherit (leanPkgs) lean;
-        inherit js;
-      };
-
-      defaultTemplate = {
-        path = ./.;
-        description = "A minimal lean WASM project";
-      };
-
-      devShell = myPkg.devShell.overrideAttrs (o : {
-        buildInputs = o.buildInputs ++ [ leanPkgs.lean-dev ];
-      });
+      defaultPackage = js;
     });
 }
